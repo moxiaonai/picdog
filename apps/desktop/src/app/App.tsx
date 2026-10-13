@@ -532,15 +532,21 @@ export function App() {
             onDrop={handleDrop}
             onDragOver={handleDragOver}
           >
-            <div className="drop-art" aria-hidden="true">
-              <span className="doc">jpg</span>
-              <span className="doc">png</span>
-              <span className="folder" />
+            <div className="drop-empty-card">
+              <div className="drop-cloud" aria-hidden="true">
+                <svg viewBox="0 0 64 48">
+                  <path d="M22.2 39H49a11 11 0 0 0 1.8-21.8A17.2 17.2 0 0 0 18 15.4 12 12 0 0 0 22.2 39Z" />
+                  <path d="M32 36V21" />
+                  <path d="m24.5 28.4 7.5-7.5 7.5 7.5" />
+                </svg>
+              </div>
+              <p className="drop-guide">
+                <span>{t('dropGuidePrefix')}</span>
+                <strong>{t('dropGuideAction')}</strong>
+              </p>
+              <p className="lead">{t(settings.uploadEnabled ? 'dropDesc' : 'dropDescCompressionOnly')}</p>
+              <div className="format-row">{t('support')}</div>
             </div>
-            <p className="eyebrow">PicDog</p>
-            <h1>{t('dropTitle')}</h1>
-            <p className="lead">{t(settings.uploadEnabled ? 'dropDesc' : 'dropDescCompressionOnly')}</p>
-            <div className="format-row">{t('support')}</div>
           </button>
         ) : (
           <BatchFileList
