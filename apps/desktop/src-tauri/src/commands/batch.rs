@@ -1,6 +1,7 @@
 use crate::error::{CommandResult, SafeError};
 use crate::models::{
-    now_string, AssetState, Batch, BatchState, CompressStatus, FileInput, UploadStatus,
+    now_string, AssetState, Batch, BatchState, CompareImagePayload, CompressStatus, FileInput,
+    UploadStatus,
 };
 use crate::state::AppState;
 use base64::{engine::general_purpose::STANDARD, Engine as _};
@@ -55,6 +56,71 @@ pub async fn select_files(title: Option<String>) -> CommandResult<Vec<FileInput>
 #[tauri::command(rename_all = "camelCase")]
 pub async fn read_image_preview(path: String) -> CommandResult<Option<String>> {
     preview_data_url(Path::new(&path))
+}
+
+#[tauri::command(rename_all = "camelCase")]
+pub async fn read_compare_images(
+    state: State<'_, AppState>,
+    asset_id: String,
+) -> CommandResult<CompareImagePayload> {
+    let asset = {
+        let batches = state
+            .batches
+            .lock()
+            .map_err(|_| SafeError::new("state_poisoned", "无法访问批次状态。", true, true))?;
+        batches
+            .values()
+            .flat_map(|batch| batch.assets.iter())
+            .find(|asset| asset.id == asset_id)
+            .cloned()
+    };
+
+    let (file_name, source_path, output_path, source_size, output_size, saved_ratio, width, height) =
+        if let Some(asset) = asset {
+            (
+                asset.name,
+                Some(asset.source_path),
+                asset.output_path,
+                asset.source_size,
+                asset.output_size,
+                asset.saved_ratio,
+                asset.width,
+                asset.height,
+            )
+        } else {
+            let item = state.get_history_item(&asset_id)?;
+            (
+                item.file_name,
+                item.source_path,
+                item.output_path,
+                item.source_size,
+                item.output_size,
+                item.saved_ratio,
+                item.width,
+                item.height,
+            )
+        };
+
+    let before_data_url = match source_path.as_deref() {
+        Some(path) => compare_data_url(Path::new(path))?,
+        None => None,
+    };
+    let after_data_url = match output_path.as_deref() {
+        Some(path) => compare_data_url(Path::new(path))?,
+        None => None,
+    };
+
+    Ok(CompareImagePayload {
+        asset_id,
+        file_name,
+        width,
+        height,
+        source_size,
+        output_size,
+        saved_ratio,
+        before_data_url,
+        after_data_url,
+    })
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -281,6 +347,50 @@ fn preview_data_url(path: &Path) -> CommandResult<Option<String>> {
         mime,
         STANDARD.encode(bytes)
     )))
+}
+
+fn compare_data_url(path: &Path) -> CommandResult<Option<String>> {
+    let metadata = match fs::metadata(path) {
+        Ok(metadata) => metadata,
+        Err(_) => return Ok(None),
+    };
+
+    if !metadata.is_file() || !is_supported_image(path) {
+        return Ok(None);
+    }
+
+    let mime = mime_for_path(path).unwrap_or("application/octet-stream");
+
+    if matches!(mime, "image/jpeg" | "image/png") {
+        if let Ok(data_url) = resized_image_data_url(path, 1800) {
+            return Ok(Some(data_url));
+        }
+    }
+
+    if metadata.len() > 32 * 1024 * 1024 {
+        return Ok(None);
+    }
+
+    let bytes = fs::read(path)
+        .map_err(|_| SafeError::new("file_not_found", "无法读取图片预览。", true, false))?;
+
+    Ok(Some(format!(
+        "data:{};base64,{}",
+        mime,
+        STANDARD.encode(bytes)
+    )))
+}
+
+fn resized_image_data_url(path: &Path, max_dimension: u32) -> Result<String, image::ImageError> {
+    let image = image::open(path)?;
+    let image = image.thumbnail(max_dimension, max_dimension);
+    let mut bytes = Cursor::new(Vec::new());
+    image.write_to(&mut bytes, image::ImageFormat::Png)?;
+
+    Ok(format!(
+        "data:image/png;base64,{}",
+        STANDARD.encode(bytes.into_inner())
+    ))
 }
 
 fn thumbnail_data_url(path: &Path) -> Result<String, image::ImageError> {

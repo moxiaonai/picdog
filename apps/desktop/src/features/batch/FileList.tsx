@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import type { AssetState } from '../../contracts/models';
 import type { I18nKey } from '../../app/i18n';
 import { picdogCommands } from '../../contracts/commands';
@@ -9,6 +10,7 @@ type FileListProps = {
   assets: AssetState[];
   uploadEnabled: boolean;
   t: (key: I18nKey) => string;
+  locale: string;
   onToggle: (assetId: string) => void;
   onUploadOne: (assetId: string) => void;
   onCopy: (assetId: string) => void;
@@ -19,13 +21,12 @@ export function FileList({
   assets,
   uploadEnabled,
   t,
+  locale,
   onToggle,
   onUploadOne,
   onCopy,
   onReveal
 }: FileListProps) {
-  const [compareAsset, setCompareAsset] = useState<AssetState | null>(null);
-
   if (assets.length === 0) return null;
 
   return (
@@ -75,7 +76,7 @@ export function FileList({
                     ⇧
                   </button>
                 )}
-                <button type="button" disabled={!canCompare(asset)} title={t('compareImage')} onClick={() => setCompareAsset(asset)}>
+                <button type="button" disabled={!canCompare(asset)} title={t('compareImage')} onClick={() => void openCompareWindow(asset, locale)}>
                   <CompareIcon />
                 </button>
                 <button type="button" disabled={!canReveal(asset)} title={t('revealOutput')} onClick={() => onReveal(asset.id)}>
@@ -91,112 +92,44 @@ export function FileList({
           );
         })}
       </div>
-      {compareAsset && (
-        <CompareDialog
-          asset={compareAsset}
-          t={t}
-          onClose={() => setCompareAsset(null)}
-        />
-      )}
     </section>
   );
 }
 
-function canCompare(asset: AssetState) {
-  return canReveal(asset) && Boolean(asset.sourcePath && asset.outputPath);
+async function openCompareWindow(asset: AssetState, locale: string) {
+  if (!hasTauriRuntime()) {
+    window.open(`/?view=compare&assetId=${encodeURIComponent(asset.id)}&locale=${encodeURIComponent(locale)}`, '_blank', 'width=900,height=680');
+    return;
+  }
+
+  const label = `compare-${asset.id.replace(/[^a-zA-Z0-9_/-]/g, '-')}`;
+  const existing = await WebviewWindow.getByLabel(label);
+  if (existing) {
+    await existing.show();
+    await existing.setFocus();
+    return;
+  }
+
+  const view = new WebviewWindow(label, {
+    url: `/?view=compare&assetId=${encodeURIComponent(asset.id)}&locale=${encodeURIComponent(locale)}`,
+    title: `PicDog · ${asset.name}`,
+    width: 920,
+    height: 690,
+    minWidth: 720,
+    minHeight: 540,
+    center: true,
+    decorations: false,
+    transparent: true,
+    shadow: false,
+    resizable: true,
+    focus: true
+  });
+
+  view.once('tauri://error', () => undefined);
 }
 
-function CompareDialog({ asset, t, onClose }: { asset: AssetState; t: (key: I18nKey) => string; onClose: () => void }) {
-  const [split, setSplit] = useState(50);
-  const [sourceFailed, setSourceFailed] = useState(false);
-  const [outputFailed, setOutputFailed] = useState(false);
-  const sourceSrc = fullImageUrl(asset.sourcePath, asset.previewUrl);
-  const outputSrc = fullImageUrl(asset.outputPath);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
-
-  useEffect(() => {
-    setSourceFailed(false);
-    setOutputFailed(false);
-    setSplit(50);
-  }, [asset.id]);
-
-  return (
-    <div className="compare-backdrop" role="presentation" onMouseDown={onClose}>
-      <div
-        className="compare-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-label={t('compareImage')}
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div className="compare-titlebar">
-          <div className="traffic-lights mini" aria-hidden="true">
-            <span className="red" />
-            <span className="yellow" />
-            <span className="green" />
-          </div>
-          <strong>{t('imageCompare')}</strong>
-          <button type="button" className="close-button" onClick={onClose} aria-label="Close">×</button>
-        </div>
-
-        <div className="compare-toolbar">
-          <span>{asset.width && asset.height ? `${asset.width}×${asset.height}` : asset.name}</span>
-          <strong>{typeof asset.savedRatio === 'number' ? `−${asset.savedRatio}%` : '—'}</strong>
-        </div>
-
-        <div className="compare-stage">
-          {sourceSrc && !sourceFailed ? (
-            <img className="compare-image before" src={sourceSrc} alt="" onError={() => setSourceFailed(true)} />
-          ) : (
-            <div className="compare-placeholder">{t('beforeCompression')}</div>
-          )}
-
-          {outputSrc && !outputFailed ? (
-            <img
-              className="compare-image after"
-              src={outputSrc}
-              alt=""
-              style={{ clipPath: `inset(0 0 0 ${split}%)` }}
-              onError={() => setOutputFailed(true)}
-            />
-          ) : null}
-
-          <div className="compare-divider" style={{ left: `${split}%` }}>
-            <span />
-          </div>
-
-          <div className="compare-badges">
-            <span>
-              {t('beforeCompression')}
-              <strong>{formatBytes(asset.sourceSize)}</strong>
-            </span>
-            <span>
-              {t('afterCompression')}
-              <strong>{asset.outputSize ? formatBytes(asset.outputSize) : '—'}</strong>
-            </span>
-          </div>
-
-          <input
-            className="compare-range"
-            type="range"
-            min="0"
-            max="100"
-            value={split}
-            aria-label={t('compareImage')}
-            onChange={(event) => setSplit(Number(event.target.value))}
-          />
-        </div>
-      </div>
-    </div>
-  );
+function canCompare(asset: AssetState) {
+  return canReveal(asset) && Boolean(asset.sourcePath && asset.outputPath);
 }
 
 function ImageThumb({ asset }: { asset: AssetState }) {
@@ -248,26 +181,6 @@ function ImageThumb({ asset }: { asset: AssetState }) {
       )}
     </div>
   );
-}
-
-function fullImageUrl(path?: string, fallbackPreviewUrl?: string) {
-  if (!path) return fallbackPreviewUrl ?? '';
-
-  if (
-    path.startsWith('blob:') ||
-    path.startsWith('data:') ||
-    path.startsWith('http')
-  ) {
-    return path;
-  }
-
-  if (!hasTauriRuntime()) return fallbackPreviewUrl ?? '';
-
-  try {
-    return convertFileSrc(path);
-  } catch {
-    return fallbackPreviewUrl ?? '';
-  }
 }
 
 function CompareIcon() {

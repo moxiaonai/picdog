@@ -547,6 +547,7 @@ export function App() {
             assets={batch.assets}
             uploadEnabled={settings.uploadEnabled}
             t={t}
+            locale={settings.locale}
             onToggle={batch.toggleAsset}
             onUploadOne={batch.uploadOne}
             onCopy={batch.copyAsset}

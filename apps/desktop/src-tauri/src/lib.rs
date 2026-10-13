@@ -36,6 +36,7 @@ pub fn run() {
             commands::batch::get_batch,
             commands::batch::get_latest_batch,
             commands::batch::read_image_preview,
+            commands::batch::read_compare_images,
             commands::batch::clear_batch,
             commands::batch::cancel_task,
             commands::batch::reveal_output,

@@ -4,7 +4,8 @@
   "description": "Default permissions for the PicDog main window",
   "local": true,
   "windows": [
-    "main"
+    "main",
+    "compare-*"
   ],
   "permissions": [
     "core:default",
@@ -12,6 +13,9 @@
     "core:window:allow-minimize",
     "core:window:allow-is-fullscreen",
     "core:window:allow-set-fullscreen",
-    "core:window:allow-start-dragging"
+    "core:window:allow-start-dragging",
+    "core:webview:allow-create-webview-window",
+    "core:window:allow-set-focus",
+    "core:window:allow-show"
   ]
 }

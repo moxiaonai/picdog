@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import type {
   AppSettings,
   Batch,
+  CompareImagePayload,
   ClearHistoryInput,
   CompressionOptions,
   CompressionToolStatus,
@@ -111,6 +112,16 @@ export const picdogCommands = {
 
   readImagePreview(path: string): Promise<string | null> {
     return callCommand('read_image_preview', { path }, () => null);
+  },
+
+  readCompareImages(assetId: string): Promise<CompareImagePayload> {
+    return callCommand('read_compare_images', { assetId }, () => ({
+      assetId,
+      fileName: 'preview.png',
+      sourceSize: 0,
+      beforeDataUrl: undefined,
+      afterDataUrl: undefined
+    }));
   },
 
   startCompression(batchId: string, options: CompressionOptions): Promise<Batch> {

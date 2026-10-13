@@ -278,6 +278,26 @@ pub struct HistoryQuery {
     pub page_size: u32,
 }
 
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CompareImagePayload {
+    pub asset_id: String,
+    pub file_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub width: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub height: Option<u32>,
+    pub source_size: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output_size: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub saved_ratio: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub before_data_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub after_data_url: Option<String>,
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct HistoryItem {

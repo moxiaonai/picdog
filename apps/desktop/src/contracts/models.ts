@@ -219,6 +219,18 @@ export type AppSettings = {
   fallbackWhenLarger: boolean;
 };
 
+export type CompareImagePayload = {
+  assetId: string;
+  fileName: string;
+  width?: number;
+  height?: number;
+  sourceSize: number;
+  outputSize?: number;
+  savedRatio?: number;
+  beforeDataUrl?: string;
+  afterDataUrl?: string;
+};
+
 export type HistoryItem = {
   id: string;
   batchId: string;
