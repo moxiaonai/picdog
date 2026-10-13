@@ -1703,38 +1703,38 @@ select option {
 .file-board {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .file-list {
   flex: 0 1 auto;
-  max-height: calc(100% - 76px);
-  gap: 6px;
+  max-height: calc(100% - 68px);
+  gap: 2px;
   padding-right: 2px;
 }
 
 .file-card {
-  grid-template-columns: 20px 40px minmax(0, 1fr) auto;
-  gap: 8px;
-  min-height: 62px;
-  padding: 7px 10px;
+  grid-template-columns: 18px 34px minmax(0, 1fr) auto;
+  gap: 7px;
+  min-height: 52px;
+  padding: 4px 8px;
   border-radius: 15px;
   box-shadow: 0 5px 16px rgba(42, 57, 89, 0.045);
 }
 
 .file-card.upload-disabled {
-  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
 }
 
 .thumb {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
 }
 
 .file-top strong {
-  font-size: 13px;
-  line-height: 1.18;
+  font-size: 12.5px;
+  line-height: 1.12;
 }
 
 .file-top small {
@@ -1744,13 +1744,13 @@ select option {
 }
 
 .progress-pair {
-  gap: 3px;
-  margin-top: 5px;
+  gap: 2px;
+  margin-top: 3px;
 }
 
 .progress-line {
-  grid-template-columns: 40px minmax(0, 1fr) 12px 30px;
-  gap: 6px;
+  grid-template-columns: 38px minmax(0, 1fr) 11px 28px;
+  gap: 5px;
   font-size: 9.5px;
 }
 
@@ -1773,19 +1773,19 @@ select option {
 }
 
 .icon-actions button {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 9px;
 }
 
 .icon-actions button svg {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
 }
 
 .continue-drop-card {
   flex: 1 1 auto;
-  min-height: 72px;
+  min-height: 64px;
   display: grid;
   place-items: center;
   width: 100%;
