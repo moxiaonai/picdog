@@ -25,6 +25,17 @@ PicDog 的核心定位是：
 > 本地优先的图片压缩发布工作台。  
 > 让每一张图片在发布前变得更小、更快、更好管理。
 
+### 界面预览
+
+| 主界面 | 设置 |
+| --- | --- |
+| <img src="assets/screenshots/picdog-main.png" alt="PicDog 主界面" width="380"> | <img src="assets/screenshots/picdog-settings.png" alt="PicDog 设置" width="380"> |
+
+| CDN 配置 | 历史记录 |
+| --- | --- |
+| <img src="assets/screenshots/picdog-cdn.png" alt="PicDog CDN 配置" width="380"> | <img src="assets/screenshots/picdog-history.png" alt="PicDog 历史记录" width="380"> |
+
+
 ### 核心卖点
 
 - 拖入即开始工作：支持图片和文件夹导入，适合博客、文档、设计交付、官网素材和应用截图批处理。
