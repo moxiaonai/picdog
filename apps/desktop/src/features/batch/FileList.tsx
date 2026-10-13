@@ -24,6 +24,8 @@ export function FileList({
   onCopy,
   onReveal
 }: FileListProps) {
+  const [compareAsset, setCompareAsset] = useState<AssetState | null>(null);
+
   if (assets.length === 0) return null;
 
   return (
@@ -73,8 +75,11 @@ export function FileList({
                     ⇧
                   </button>
                 )}
+                <button type="button" disabled={!canCompare(asset)} title={t('compareImage')} onClick={() => setCompareAsset(asset)}>
+                  <CompareIcon />
+                </button>
                 <button type="button" disabled={!canReveal(asset)} title={t('revealOutput')} onClick={() => onReveal(asset.id)}>
-                  ⌕
+                  <FolderIcon />
                 </button>
                 {uploadEnabled && (
                   <button type="button" disabled={!canCopy(asset)} title={canCopy(asset) ? t('copyLink') : t('copyAfterUpload')} onClick={() => onCopy(asset.id)}>
@@ -86,7 +91,111 @@ export function FileList({
           );
         })}
       </div>
+      {compareAsset && (
+        <CompareDialog
+          asset={compareAsset}
+          t={t}
+          onClose={() => setCompareAsset(null)}
+        />
+      )}
     </section>
+  );
+}
+
+function canCompare(asset: AssetState) {
+  return canReveal(asset) && Boolean(asset.sourcePath && asset.outputPath);
+}
+
+function CompareDialog({ asset, t, onClose }: { asset: AssetState; t: (key: I18nKey) => string; onClose: () => void }) {
+  const [split, setSplit] = useState(50);
+  const [sourceFailed, setSourceFailed] = useState(false);
+  const [outputFailed, setOutputFailed] = useState(false);
+  const sourceSrc = fullImageUrl(asset.sourcePath, asset.previewUrl);
+  const outputSrc = fullImageUrl(asset.outputPath);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  useEffect(() => {
+    setSourceFailed(false);
+    setOutputFailed(false);
+    setSplit(50);
+  }, [asset.id]);
+
+  return (
+    <div className="compare-backdrop" role="presentation" onMouseDown={onClose}>
+      <div
+        className="compare-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('compareImage')}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="compare-titlebar">
+          <div className="traffic-lights mini" aria-hidden="true">
+            <span className="red" />
+            <span className="yellow" />
+            <span className="green" />
+          </div>
+          <strong>{t('imageCompare')}</strong>
+          <button type="button" className="close-button" onClick={onClose} aria-label="Close">×</button>
+        </div>
+
+        <div className="compare-toolbar">
+          <span>{asset.width && asset.height ? `${asset.width}×${asset.height}` : asset.name}</span>
+          <strong>{typeof asset.savedRatio === 'number' ? `−${asset.savedRatio}%` : '—'}</strong>
+        </div>
+
+        <div className="compare-stage">
+          {sourceSrc && !sourceFailed ? (
+            <img className="compare-image before" src={sourceSrc} alt="" onError={() => setSourceFailed(true)} />
+          ) : (
+            <div className="compare-placeholder">{t('beforeCompression')}</div>
+          )}
+
+          {outputSrc && !outputFailed ? (
+            <img
+              className="compare-image after"
+              src={outputSrc}
+              alt=""
+              style={{ clipPath: `inset(0 0 0 ${split}%)` }}
+              onError={() => setOutputFailed(true)}
+            />
+          ) : null}
+
+          <div className="compare-divider" style={{ left: `${split}%` }}>
+            <span />
+          </div>
+
+          <div className="compare-badges">
+            <span>
+              {t('beforeCompression')}
+              <strong>{formatBytes(asset.sourceSize)}</strong>
+            </span>
+            <span>
+              {t('afterCompression')}
+              <strong>{asset.outputSize ? formatBytes(asset.outputSize) : '—'}</strong>
+            </span>
+          </div>
+
+          <input
+            className="compare-range"
+            type="range"
+            min="0"
+            max="100"
+            value={split}
+            aria-label={t('compareImage')}
+            onChange={(event) => setSplit(Number(event.target.value))}
+          />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -138,6 +247,45 @@ function ImageThumb({ asset }: { asset: AssetState }) {
         <span>{extension}</span>
       )}
     </div>
+  );
+}
+
+function fullImageUrl(path?: string, fallbackPreviewUrl?: string) {
+  if (!path) return fallbackPreviewUrl ?? '';
+
+  if (
+    path.startsWith('blob:') ||
+    path.startsWith('data:') ||
+    path.startsWith('http')
+  ) {
+    return path;
+  }
+
+  if (!hasTauriRuntime()) return fallbackPreviewUrl ?? '';
+
+  try {
+    return convertFileSrc(path);
+  } catch {
+    return fallbackPreviewUrl ?? '';
+  }
+}
+
+function CompareIcon() {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <rect x="3" y="4" width="14" height="12" rx="2.5" />
+      <path d="M10 4v12" />
+      <path d="M6.5 7.5h1.5M12 7.5h1.5M6.5 12.5h1.5M12 12.5h1.5" />
+    </svg>
+  );
+}
+
+function FolderIcon() {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <path d="M2.8 6.2h5.1l1.3 1.6h8v6.7a2 2 0 0 1-2 2H4.8a2 2 0 0 1-2-2V6.2Z" />
+      <path d="M2.8 8h14.4" />
+    </svg>
   );
 }
 
