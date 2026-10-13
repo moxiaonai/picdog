@@ -1,7 +1,8 @@
 use crate::credentials;
 use crate::error::{CommandResult, SafeError};
 use crate::models::{
-    AssetState, Batch, BatchState, HistoryItem, Route, RouteCredentialInput, UploadStatus,
+    AssetState, Batch, BatchState, CompressStatus, HistoryItem, Route, RouteCredentialInput,
+    UploadStatus,
 };
 use crate::state::AppState;
 use crate::uploaders::{self, UploadObjectInput};
@@ -513,8 +514,11 @@ fn apply_upload_results(
         .iter()
         .filter(|asset| asset.output_path.is_some())
         .all(|asset| matches!(asset.upload_status, UploadStatus::Done));
+    let has_pending_compression = batch.assets.iter().any(asset_needs_compression);
     batch.status = if has_failed_upload {
         BatchState::Failed
+    } else if has_pending_compression {
+        BatchState::Queue
     } else if all_uploaded {
         BatchState::Uploaded
     } else {
@@ -527,6 +531,13 @@ fn apply_upload_results(
 
 fn emit_task_event(app: &AppHandle, payload: serde_json::Value) {
     let _ = app.emit(TASK_EVENT, payload);
+}
+
+fn asset_needs_compression(asset: &AssetState) -> bool {
+    matches!(
+        asset.compress_status,
+        CompressStatus::Pending | CompressStatus::Running
+    ) || (matches!(asset.compress_status, CompressStatus::Done) && asset.output_path.is_none())
 }
 
 fn batch_status_to_event_value(status: &BatchState) -> &'static str {

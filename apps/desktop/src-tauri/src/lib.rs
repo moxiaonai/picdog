@@ -33,6 +33,7 @@ pub fn run() {
             commands::batch::scan_dropped_paths,
             commands::batch::select_files,
             commands::batch::create_batch,
+            commands::batch::append_to_batch,
             commands::batch::get_batch,
             commands::batch::get_latest_batch,
             commands::batch::read_image_preview,

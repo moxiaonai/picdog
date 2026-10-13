@@ -142,34 +142,7 @@ pub async fn create_batch(
 ) -> CommandResult<Batch> {
     let now = now_string();
     let batch_id = format!("batch-{}", now);
-
-    let mut seen = HashSet::new();
-    let assets = files
-        .into_iter()
-        .filter(|file| seen.insert(file.path.clone()))
-        .enumerate()
-        .map(|(index, file)| AssetState {
-            id: format!("asset-{}-{}", batch_id, index),
-            batch_id: batch_id.clone(),
-            name: file.name,
-            source_path: file.path,
-            output_path: None,
-            source_size: file.size,
-            output_size: None,
-            mime: file.mime,
-            width: None,
-            height: None,
-            saved_ratio: None,
-            compress_status: CompressStatus::Pending,
-            upload_status: UploadStatus::None,
-            compress_progress: 0,
-            upload_progress: 0,
-            selected: false,
-            route_id: None,
-            public_url: None,
-            error: None,
-        })
-        .collect();
+    let assets = build_assets(&batch_id, files, 0, &now);
 
     let batch = Batch {
         id: batch_id.clone(),
@@ -188,6 +161,86 @@ pub async fn create_batch(
     state.upsert_batch(&batch)?;
 
     Ok(batch)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+pub async fn append_to_batch(
+    state: State<'_, AppState>,
+    batch_id: String,
+    files: Vec<FileInput>,
+) -> CommandResult<Batch> {
+    let mut batch = state
+        .get_batch(&batch_id)?
+        .ok_or_else(|| SafeError::new("batch_not_found", "批次不存在或已被清除。", true, false))?;
+
+    let now = now_string();
+    let start_index = batch.assets.len();
+    let mut assets = build_assets(&batch.id, files, start_index, &now);
+
+    if assets.is_empty() {
+        return Ok(batch);
+    }
+
+    batch.assets.append(&mut assets);
+    if !matches!(
+        batch.status,
+        BatchState::Compressing | BatchState::Uploading | BatchState::Cancelling
+    ) {
+        batch.status = BatchState::Queue;
+    }
+    batch.updated_at = now;
+
+    let mut batches = state
+        .batches
+        .lock()
+        .map_err(|_| SafeError::new("state_poisoned", "无法访问批次状态。", true, true))?;
+    batches.insert(batch.id.clone(), batch.clone());
+    drop(batches);
+
+    state.upsert_batch(&batch)?;
+
+    Ok(batch)
+}
+
+fn build_assets(
+    batch_id: &str,
+    files: Vec<FileInput>,
+    start_index: usize,
+    import_stamp: &str,
+) -> Vec<AssetState> {
+    let mut seen = HashSet::new();
+
+    files
+        .into_iter()
+        .filter(|file| seen.insert(format!("{}|{}|{}", file.path, file.name, file.size)))
+        .enumerate()
+        .map(|(index, file)| AssetState {
+            id: format!(
+                "asset-{}-{}-{}",
+                batch_id,
+                import_stamp,
+                start_index + index
+            ),
+            batch_id: batch_id.to_string(),
+            name: file.name,
+            source_path: file.path,
+            output_path: None,
+            source_size: file.size,
+            output_size: None,
+            mime: file.mime,
+            width: None,
+            height: None,
+            saved_ratio: None,
+            compress_status: CompressStatus::Pending,
+            upload_status: UploadStatus::None,
+            compress_progress: 0,
+            upload_progress: 0,
+            selected: false,
+            route_id: None,
+            public_url: None,
+            error: None,
+        })
+        .collect()
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -456,7 +509,8 @@ fn platform_reveal_command(path: &Path) -> Command {
 
 #[cfg(test)]
 mod reveal_tests {
-    use super::{collect_image_inputs, platform_reveal_command};
+    use super::{build_assets, collect_image_inputs, platform_reveal_command};
+    use crate::models::{CompressStatus, FileInput};
     use std::collections::HashSet;
     use std::fs;
     use std::path::Path;
@@ -500,5 +554,26 @@ mod reveal_tests {
 
         let _ = fs::remove_file(image);
         let _ = fs::remove_dir(dir);
+    }
+
+    #[test]
+    fn appended_imports_create_new_records_for_same_source_path() {
+        let file = FileInput {
+            path: "/tmp/hero.png".to_string(),
+            name: "hero.png".to_string(),
+            size: 42,
+            mime: Some("image/png".to_string()),
+            is_directory: Some(false),
+        };
+
+        let first = build_assets("batch-1", vec![file.clone()], 0, "1000");
+        let second = build_assets("batch-1", vec![file], first.len(), "2000");
+
+        assert_eq!(first.len(), 1);
+        assert_eq!(second.len(), 1);
+        assert_eq!(first[0].source_path, second[0].source_path);
+        assert_ne!(first[0].id, second[0].id);
+        assert_eq!(second[0].id, "asset-batch-1-2000-1");
+        assert!(matches!(second[0].compress_status, CompressStatus::Pending));
     }
 }

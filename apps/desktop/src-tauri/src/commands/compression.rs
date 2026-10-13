@@ -211,8 +211,11 @@ pub async fn start_compression(
         }
     }
 
+    let has_pending_compression = batch.assets.iter().any(asset_needs_compression);
     batch.status = if failed_count > 0 || cancelled_count > 0 {
         BatchState::Failed
+    } else if has_pending_compression {
+        BatchState::Queue
     } else {
         BatchState::Compressed
     };
@@ -229,7 +232,7 @@ pub async fn start_compression(
         json!({
             "type": "batch.status.changed",
             "batchId": batch_snapshot.id,
-            "status": if matches!(batch_snapshot.status, BatchState::Failed) { "failed" } else { "compressed" }
+            "status": batch_status_to_event_value(&batch_snapshot.status)
         }),
     );
     emit_task_event(
@@ -242,4 +245,24 @@ pub async fn start_compression(
 
 fn emit_task_event(app: &AppHandle, payload: serde_json::Value) {
     let _ = app.emit(TASK_EVENT, payload);
+}
+
+fn asset_needs_compression(asset: &crate::models::AssetState) -> bool {
+    matches!(
+        asset.compress_status,
+        CompressStatus::Pending | CompressStatus::Running
+    ) || (matches!(asset.compress_status, CompressStatus::Done) && asset.output_path.is_none())
+}
+
+fn batch_status_to_event_value(status: &BatchState) -> &'static str {
+    match status {
+        BatchState::Empty => "empty",
+        BatchState::Queue => "queue",
+        BatchState::Compressing => "compressing",
+        BatchState::Compressed => "compressed",
+        BatchState::Uploading => "uploading",
+        BatchState::Uploaded => "uploaded",
+        BatchState::Failed => "failed",
+        BatchState::Cancelling => "cancelling",
+    }
 }

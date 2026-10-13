@@ -26,6 +26,7 @@ const hasTauriRuntime = () =>
 let previewSettings: AppSettings = { ...mockSettings };
 let previewRoutes: Route[] = [...mockRoutes];
 let previewHistory: HistoryItem[] = [...mockHistory];
+let previewBatches: Record<string, Batch> = {};
 
 async function callCommand<T>(name: string, args: Record<string, unknown>, fallback: () => T | Promise<T>): Promise<T> {
   if (hasTauriRuntime()) {
@@ -99,7 +100,39 @@ export const picdogCommands = {
   },
 
   createBatch(files: FileInput[]): Promise<Batch> {
-    return callCommand('create_batch', { files }, () => createMockBatch(files));
+    return callCommand('create_batch', { files }, () => {
+      const batch = createMockBatch(files);
+      previewBatches[batch.id] = batch;
+      return batch;
+    });
+  },
+
+  appendToBatch(batchId: string, files: FileInput[]): Promise<Batch> {
+    return callCommand('append_to_batch', { batchId, files }, () => {
+      const current = previewBatches[batchId];
+      if (!current) {
+        const batch = createMockBatch(files);
+        previewBatches[batch.id] = batch;
+        return batch;
+      }
+
+      const appended = createMockBatch(files);
+      const next = {
+        ...current,
+        status: 'queue' as const,
+        updatedAt: new Date().toISOString(),
+        assets: [
+          ...current.assets,
+          ...appended.assets.map((asset) => ({
+            ...asset,
+            id: asset.id + '-' + current.assets.length,
+            batchId
+          }))
+        ]
+      };
+      previewBatches[batchId] = next;
+      return next;
+    });
   },
 
   getBatch(batchId: string): Promise<Batch | null> {

@@ -91,6 +91,17 @@ function shouldCompress(asset: AssetState) {
   return asset.compressStatus !== 'done' || !asset.outputPath;
 }
 
+function hasPendingCompression(batch: Batch) {
+  return batch.assets.some((asset) =>
+    asset.compressStatus === 'pending' ||
+    (asset.compressStatus === 'running' && !asset.outputPath)
+  );
+}
+
+function isBusyState(state: BatchState) {
+  return state === 'compressing' || state === 'uploading' || state === 'cancelling';
+}
+
 function hasTauriRuntime() {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 }
@@ -294,6 +305,13 @@ export function useBatchController(options: BatchControllerOptions = {}) {
       const nextBatch = hasAssets(syncedBatch) ? syncedBatch : fallbackCompressedBatch(targetBatch);
       const hasCancelled = nextBatch.assets.some((asset) => asset.compressStatus === 'cancelled');
       setLastError(hasCancelled ? localizedUiMessage('operationCancelled', locale) : null);
+
+      if (!hasCancelled && nextBatch.status === 'queue' && hasPendingCompression(nextBatch)) {
+        await options.onHistoryChanged?.();
+        await runCompression(nextBatch);
+        return;
+      }
+
       setBatch(nextBatch);
       setState(nextBatch.status);
       await options.onHistoryChanged?.();
@@ -307,10 +325,18 @@ export function useBatchController(options: BatchControllerOptions = {}) {
   const importFiles = async (files: FileInput[]) => {
     if (files.length === 0) return;
 
-    const nextBatch = await picdogCommands.createBatch(files);
+    const nextBatch = batch
+      ? await picdogCommands.appendToBatch(batch.id, files)
+      : await picdogCommands.createBatch(files);
     setLastError(null);
 
     if (!hasAssets(nextBatch)) {
+      setBatch(nextBatch);
+      setState(nextBatch.status);
+      return;
+    }
+
+    if (isBusyState(state)) {
       setBatch(nextBatch);
       setState(nextBatch.status);
       return;
@@ -439,6 +465,13 @@ export function useBatchController(options: BatchControllerOptions = {}) {
           ? localizedUiMessage('operationCancelled', locale)
         : null
       );
+
+      if (!hasCancelledUpload && nextBatch.status === 'queue' && hasPendingCompression(nextBatch)) {
+        await options.onHistoryChanged?.();
+        await runCompression(nextBatch);
+        return;
+      }
+
       setBatch(nextBatch);
       setState(nextBatch.status);
       await options.onHistoryChanged?.();
