@@ -106,9 +106,11 @@ export function FileList({
         onDrop={onDropFiles}
         onDragOver={onDragOverFiles}
       >
-        <span aria-hidden="true">＋</span>
-        <strong>{t('continueDropHint')}</strong>
-        <small>{t('continueDropAction')}</small>
+        <span className="continue-drop-content">
+          <span className="continue-drop-icon" aria-hidden="true">＋</span>
+          <strong>{t('continueDropHint')}</strong>
+          <small>{t('continueDropAction')}</small>
+        </span>
       </button>
     </section>
   );
