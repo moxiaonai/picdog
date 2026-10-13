@@ -140,8 +140,15 @@ export function HistoryPopover({
                   </small>
                 </div>
                 <div className="history-actions">
-                  <button type="button" disabled={!item.outputPath} onClick={() => onReveal(item)}>
-                    {t('revealOutput')}
+                  <button
+                    className="history-icon-button"
+                    type="button"
+                    disabled={!item.outputPath}
+                    title={t('revealOutput')}
+                    aria-label={t('revealOutput')}
+                    onClick={() => onReveal(item)}
+                  >
+                    <FolderIcon />
                   </button>
                   {uploadEnabled && (
                     <button type="button" disabled={!item.canCopy} onClick={() => onCopy(item)}>
@@ -168,5 +175,14 @@ export function HistoryPopover({
         </div>
       </div>
     </section>
+  );
+}
+
+function FolderIcon() {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <path d="M2.8 6.2h5.1l1.3 1.6h8v6.7a2 2 0 0 1-2 2H4.8a2 2 0 0 1-2-2V6.2Z" />
+      <path d="M2.8 8h14.4" />
+    </svg>
   );
 }
