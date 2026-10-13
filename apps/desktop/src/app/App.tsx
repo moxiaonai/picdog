@@ -558,6 +558,9 @@ export function App() {
             onUploadOne={batch.uploadOne}
             onCopy={batch.copyAsset}
             onReveal={batch.revealAsset}
+            onChooseFiles={() => void chooseFiles()}
+            onDropFiles={handleDrop}
+            onDragOverFiles={handleDragOver}
           />
         )}
       </section>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type DragEvent } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import type { AssetState } from '../../contracts/models';
@@ -15,6 +15,9 @@ type FileListProps = {
   onUploadOne: (assetId: string) => void;
   onCopy: (assetId: string) => void;
   onReveal: (assetId: string) => void;
+  onChooseFiles: () => void;
+  onDropFiles: (event: DragEvent<HTMLButtonElement>) => void;
+  onDragOverFiles: (event: DragEvent<HTMLButtonElement>) => void;
 };
 
 export function FileList({
@@ -25,7 +28,10 @@ export function FileList({
   onToggle,
   onUploadOne,
   onCopy,
-  onReveal
+  onReveal,
+  onChooseFiles,
+  onDropFiles,
+  onDragOverFiles
 }: FileListProps) {
   if (assets.length === 0) return null;
 
@@ -92,6 +98,18 @@ export function FileList({
           );
         })}
       </div>
+
+      <button
+        className="continue-drop-card"
+        type="button"
+        onClick={onChooseFiles}
+        onDrop={onDropFiles}
+        onDragOver={onDragOverFiles}
+      >
+        <span aria-hidden="true">＋</span>
+        <strong>{t('continueDropHint')}</strong>
+        <small>{t('continueDropAction')}</small>
+      </button>
     </section>
   );
 }
