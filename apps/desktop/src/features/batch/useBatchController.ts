@@ -277,13 +277,46 @@ export function useBatchController(options: BatchControllerOptions = {}) {
     asset.compressStatus === 'failed' || asset.compressStatus === 'cancelled'
   );
 
+  const runCompression = async (targetBatch: Batch) => {
+    setState('compressing');
+    setBatch({
+      ...targetBatch,
+      status: 'compressing',
+      assets: targetBatch.assets.map((asset) => ({
+        ...asset,
+        compressStatus: shouldCompress(asset) ? 'running' : asset.compressStatus,
+        compressProgress: shouldCompress(asset) ? Math.max(asset.compressProgress, 8) : asset.compressProgress
+      }))
+    });
+
+    try {
+      const syncedBatch = await picdogCommands.startCompression(targetBatch.id, compressionOptionsFromSettings(options.settings));
+      const nextBatch = hasAssets(syncedBatch) ? syncedBatch : fallbackCompressedBatch(targetBatch);
+      const hasCancelled = nextBatch.assets.some((asset) => asset.compressStatus === 'cancelled');
+      setLastError(hasCancelled ? localizedUiMessage('operationCancelled', locale) : null);
+      setBatch(nextBatch);
+      setState(nextBatch.status);
+      await options.onHistoryChanged?.();
+    } catch (error) {
+      setLastError(localizedErrorMessage(error, locale));
+      setState('failed');
+      setBatch({ ...targetBatch, status: 'failed' });
+    }
+  };
+
   const importFiles = async (files: FileInput[]) => {
     if (files.length === 0) return;
 
     const nextBatch = await picdogCommands.createBatch(files);
     setLastError(null);
-    setBatch(nextBatch);
-    setState('queue');
+
+    if (!hasAssets(nextBatch)) {
+      setBatch(nextBatch);
+      setState(nextBatch.status);
+      return;
+    }
+
+    await runCompression(nextBatch);
   };
 
   const chooseDemoFiles = async () => {
@@ -353,32 +386,7 @@ export function useBatchController(options: BatchControllerOptions = {}) {
 
   const startCompression = async () => {
     if (!batch) return;
-
-    const currentBatch = batch;
-    setState('compressing');
-    setBatch({
-      ...currentBatch,
-      status: 'compressing',
-      assets: currentBatch.assets.map((asset) => ({
-        ...asset,
-        compressStatus: shouldCompress(asset) ? 'running' : asset.compressStatus,
-        compressProgress: shouldCompress(asset) ? Math.max(asset.compressProgress, 8) : asset.compressProgress
-      }))
-    });
-
-    try {
-      const syncedBatch = await picdogCommands.startCompression(currentBatch.id, compressionOptionsFromSettings(options.settings));
-      const nextBatch = hasAssets(syncedBatch) ? syncedBatch : fallbackCompressedBatch(currentBatch);
-      const hasCancelled = nextBatch.assets.some((asset) => asset.compressStatus === 'cancelled');
-      setLastError(hasCancelled ? localizedUiMessage('operationCancelled', locale) : null);
-      setBatch(nextBatch);
-      setState(nextBatch.status);
-      await options.onHistoryChanged?.();
-    } catch (error) {
-      setLastError(localizedErrorMessage(error, locale));
-      setState('failed');
-      setBatch((current) => current ? { ...current, status: 'failed' } : current);
-    }
+    await runCompression(batch);
   };
 
   const uploadAssetIds = async (assetIds: string[]) => {

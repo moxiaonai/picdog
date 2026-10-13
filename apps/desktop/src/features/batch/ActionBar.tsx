@@ -20,12 +20,11 @@ type ActionBarProps = {
   onSelectAll: () => void;
 };
 
-const primaryLabel: Record<ActionBarProps['primaryActionKind'], I18nKey> = {
+const primaryLabel: Record<Exclude<ActionBarProps['primaryActionKind'], 'busy'>, I18nKey> = {
   choose: 'choose',
   compress: 'compress',
   retryCompression: 'retryCompression',
-  uploadSelected: 'uploadSelected',
-  busy: 'compress'
+  uploadSelected: 'uploadSelected'
 };
 
 export function ActionBar({
@@ -49,6 +48,9 @@ export function ActionBar({
   const busy = state === 'compressing' || state === 'uploading' || state === 'cancelling';
   const compressionEffect = batchCompressionEffect(assets);
   const showPrimary = uploadEnabled || (state !== 'compressed' && primaryActionKind !== 'uploadSelected');
+  const primaryText = primaryActionKind === 'busy'
+    ? t(state === 'uploading' ? 'uploading' : state === 'cancelling' ? 'cancelling' : 'compressing')
+    : t(primaryLabel[primaryActionKind]);
 
   return (
     <footer className="actionbar" title={error ?? undefined}>
@@ -85,7 +87,7 @@ export function ActionBar({
         )}
         {showPrimary && (
           <button className="primary-button" type="button" disabled={busy || !canPrimary} onClick={onPrimary}>
-            {t(primaryLabel[primaryActionKind])}
+            {primaryText}
           </button>
         )}
       </div>
