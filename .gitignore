@@ -1,0 +1,26 @@
+# Local documentation drafts
+docs/
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+**/dist/
+target/
+**/target/
+output/
+
+# Tauri generated temporary iconset
+*.iconset/
+
+# Local dev artifacts
+.playwright-cli/
+.DS_Store
+*.log
+
+# Environment and local secrets
+.env
+.env.*
+!.env.example

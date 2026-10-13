@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PicDog Desktop Prototype</title>
+  <link rel="stylesheet" href="./styles.css?v=upload-toggle-20261012" />
+</head>
+<body>
+  <main class="scene" aria-label="PicDog desktop prototype">
+    <section class="app-panel" aria-label="PicDog single panel" data-upload-enabled="false">
+      <header class="titlebar">
+        <div class="traffic" aria-hidden="true"><span></span><span></span><span></span></div>
+        <strong class="app-title">PicDog</strong>
+        <div class="title-actions">
+          <button class="cdn-trigger" id="cdnButton" type="button" aria-label="CDN 配置" title="CDN 配置" aria-expanded="false" data-i18n-title="cdnTitle">CDN</button>
+          <button class="history-trigger" id="historyButton" type="button" aria-label="历史记录" title="历史记录" aria-expanded="false" data-i18n-title="historyButton">◴</button>
+          <button class="settings-trigger" id="settingsButton" type="button" aria-label="设置" aria-expanded="false">⚙︎</button>
+        </div>
+      </header>
+
+      <section class="settings-popover" id="settingsPanel" aria-label="Settings" hidden>
+        <div class="settings-head">
+          <strong data-i18n="settingsTitle">设置</strong>
+          <button class="settings-close" id="settingsClose" type="button" aria-label="关闭">×</button>
+        </div>
+        <div class="settings-list popover-body">
+          <label class="settings-row language-row">
+            <span><strong data-i18n="languageTitle">界面语言</strong><small data-i18n="languageDesc">默认中文，可随时切换</small></span>
+            <div class="segmented" role="group" aria-label="Language switcher"><button class="lang active" type="button" data-lang="zh">中文</button><button class="lang" type="button" data-lang="en">EN</button><button class="lang" type="button" data-lang="ja">日本語</button></div>
+          </label>
+          <label class="settings-row upload-only-setting">
+            <span><strong data-i18n="formatTitle">复制格式</strong><small data-i18n="formatDesc">上传完成后复制 CDN 链接</small></span>
+            <select id="formatSelect"><option>Markdown</option><option>URL</option><option>HTML</option></select>
+          </label>
+        </div>
+      </section>
+
+      <section class="settings-popover cdn-popover" id="cdnPanel" aria-label="CDN 配置" hidden>
+        <div class="settings-head">
+          <strong data-i18n="cdnTitle">CDN 配置</strong>
+          <button class="settings-close" id="cdnClose" type="button" aria-label="关闭">×</button>
+        </div>
+        <div class="settings-list popover-body">
+          <label class="settings-row upload-toggle-row">
+            <span><strong data-i18n="uploadFeatureTitle">上传功能</strong><small data-i18n="uploadFeatureDesc">开启后显示 CDN 上传与链接操作</small></span>
+            <input class="upload-feature-switch" id="uploadEnabledSwitch" type="checkbox" role="switch" aria-label="上传功能" data-i18n-title="uploadFeatureTitle" />
+          </label>
+          <label class="settings-row">
+            <span><strong data-i18n="targetTitle">上传目标</strong><small data-i18n="targetDesc">压缩后手动上传到当前目标</small></span>
+            <select id="targetSelect"><option>Blog CDN · R2</option><option>Docs OSS</option><option>GitHub CDN</option><option>Custom API</option></select>
+          </label>
+          <label class="settings-row">
+            <span><strong data-i18n="cdnDomainTitle">CDN 域名</strong><small data-i18n="cdnDomainDesc">复制链接时使用的访问域名</small></span>
+            <input id="cdnDomainInput" value="https://cdn.picdog.app" />
+          </label>
+          <label class="settings-row">
+            <span><strong data-i18n="cdnPathTitle">存储路径</strong><small data-i18n="cdnPathDesc">支持日期和文件名模板</small></span>
+            <input id="cdnPathInput" value="{yyyy}/{mm}/{hash}-{name}.{ext}" />
+          </label>
+        </div>
+      </section>
+
+      <section class="history-popover" id="historyPanel" aria-label="History" hidden>
+        <div class="history-head">
+          <strong data-i18n="historyTitle">历史记录</strong>
+          <div class="history-actions">
+            <button class="clear-history" id="clearHistoryButton" type="button" data-i18n="clearHistory">清除历史</button>
+            <button class="history-close" id="historyClose" type="button" aria-label="关闭">×</button>
+          </div>
+        </div>
+        <div class="popover-body history-body">
+          <div class="history-summary">
+            <strong id="historyCount">3 条记录</strong>
+            <small data-i18n="historyPrivacy">只保存结果、状态和链接，不保存上传密钥。</small>
+          </div>
+          <div class="history-list" id="historyList"></div>
+        </div>
+      </section>
+
+      <section class="workspace" aria-live="polite">
+        <div class="drop-zone" id="dropZone">
+          <div class="drop-art" aria-hidden="true"><span class="doc">jpg</span><span class="doc">png</span><span class="doc">gif</span><span class="folder"></span><span class="funnel"></span></div>
+          <p class="eyebrow">PicDog</p>
+          <h1 data-i18n="emptyTitle">拖入图片或文件夹</h1>
+          <p class="lead" data-i18n="emptyDesc">自动压缩，完成后可勾选上传到图床 / CDN。</p>
+          <div class="format-row compact-formats" data-i18n="formatSupport">支持 JPG · PNG · GIF · WebP · Folder</div>
+        </div>
+
+        <div class="file-board" id="fileBoard" hidden>
+          <div class="file-list" id="fileList"></div>
+        </div>
+      </section>
+
+      <footer class="actionbar">
+        <div class="batch-stats" aria-live="polite">
+          <span class="batch-stat"><small data-i18n="imageCountLabel">数量</small><strong id="batchCount">0 张</strong></span>
+          <span class="batch-stat"><small data-i18n="compressionEffectLabel">压缩效果</small><strong id="batchSaving">—</strong></span>
+        </div>
+        <div class="action-group"><button class="soft-button danger-soft" id="clearBatchButton" data-i18n="clearBatch" hidden>清除</button><button class="soft-button" id="selectAllButton" data-i18n="selectAll" hidden>全选</button><button class="primary-button" id="mainAction">选择图片</button></div>
+      </footer>
+    </section>
+
+    <div class="toast" id="toast" role="status">已复制</div>
+  </main>
+  <script src="./src/core/prototype-core.js?v=upload-toggle-20261012"></script>
+  <script src="./app.js?v=upload-toggle-20261012"></script>
+</body>
+</html>
